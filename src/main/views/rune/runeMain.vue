@@ -14,8 +14,15 @@ const { storeRune } = defineProps<{
 	storeRune: Store<"useRuneStore", RuneStoreState, {}, RuneStoreActions>;
 }>();
 
+/** 官方符文列表。get101Runes 通常代表来自 101/官方数据源的推荐。 */
 const rune101List: Ref<Rune[]> = ref([]);
 
+/**
+ * 监听当前英雄变化并加载官方符文。
+ *
+ * storeRune.runeDataList 是项目远程推荐数据；
+ * rune101List 是另一份官方/101 数据源，用第二个 Tab 展示，方便用户对比。
+ */
 watch(
 	() => storeRune.currentChamp,
 	async (champId: number) => {
@@ -35,6 +42,7 @@ watch(
 		content-style="padding-top:2px;padding-left:0px;padding-right:0px;"
 		style="height: 517px"
 	>
+		<!-- 常规模式：展示推荐符文、官方符文和装备方案。 -->
 		<n-tabs
 			class="mt-2.5"
 			type="segment"
@@ -53,7 +61,7 @@ watch(
 			</n-tab-pane>
 		</n-tabs>
 
-		<!--      海克斯数据-->
+		<!-- 特殊模式：展示海克斯强化与装备。 -->
 		<n-tabs
 			class="mt-2.5"
 			type="segment"
