@@ -12,13 +12,21 @@ const { storeRune } = defineProps<{
 	storeRune: Store<"useRuneStore", RuneStoreState, {}, RuneStoreActions>;
 }>();
 
+/** 是否打开底部自动符文抽屉。 */
 const autoRuneActive = ref(false);
+/** 当前英雄是否已经配置自动符文。 */
 const isAutoRune = ref(false);
 const message = useMessage();
 const configSetting = JSON.parse(<string>localStorage.getItem("configSetting"));
 const runeTips = new RuneTips();
+/** 用于“首次点击先提示、再次点击确认”的计数。 */
 const autoRuneCheckCount = ref<number>(0);
-// 自动配置符文
+
+/**
+ * 自动写入当前英雄符文。
+ *
+ * 当用户之前为某个英雄保存过自动符文时，选到该英雄后会自动调用这个函数。
+ */
 const autoWriteRune = (alias: string) => {
 	const localRuneStr = localStorage.getItem("autoRune") as string;
 	const runeData = JSON.parse(localRuneStr)[alias];
@@ -37,6 +45,12 @@ const autoWriteRune = (alias: string) => {
 	});
 };
 
+/**
+ * 监听当前英雄 alias 变化。
+ *
+ * 触发场景：main/index.vue 收到 Champion 状态 -> runeStore.initStore -> currentChampAlias 变化。
+ * 如果 localStorage.autoRune 中存在该英雄数据，则自动写入符文页。
+ */
 watch(
 	() => storeRune.currentChampAlias,
 	async (alias: string) => {
@@ -53,13 +67,15 @@ watch(
 	{ immediate: true },
 );
 
+/**
+ * 设置/更新当前英雄自动符文。
+ *
+ * checkTwo=false：第一次点击，可能先显示风险/说明提示；
+ * checkTwo=true：用户再次点击确认，直接保存当前客户端符文为自动符文。
+ */
 const setAutoRune = async (checkTwo: boolean) => {
 	if (checkTwo) {
-		writeAutoRune(
-			storeRune.currentChampAlias,
-			storeRune.currentChampTitle,
-			message,
-		);
+		writeAutoRune(storeRune.currentChampAlias, storeRune.currentChampTitle, message);
 		setupAutoRune("auto");
 		autoRuneCheckCount.value = 0;
 		return;
@@ -68,19 +84,19 @@ const setAutoRune = async (checkTwo: boolean) => {
 		runeTips.init(configSetting);
 		autoRuneCheckCount.value++;
 	} else {
-		writeAutoRune(
-			storeRune.currentChampAlias,
-			storeRune.currentChampTitle,
-			message,
-		);
+		writeAutoRune(storeRune.currentChampAlias, storeRune.currentChampTitle, message);
 		setupAutoRune("auto");
 	}
 };
+
+/** 点击英雄头像时，如果当前英雄已启用自动符文，则打开抽屉查看/更新。 */
 const openDrawer = () => {
 	if (isAutoRune.value) {
 		autoRuneActive.value = true;
 	}
 };
+
+/** 子组件 runeAuto 完成设置后回调。 */
 const setupAutoRune = (type: string) => {
 	if (type === "auto") {
 		isAutoRune.value = true;
@@ -89,6 +105,7 @@ const setupAutoRune = (type: string) => {
 	}
 	autoRuneActive.value = false;
 };
+
 const openTips = () => {
 	runeTips.init(configSetting);
 };
@@ -100,16 +117,9 @@ onDeactivated(() => {
 
 <template>
 	<n-card class="shadow" size="small">
-		<div
-			v-if="storeRune.skillsList.length > 0"
-			class="flex justify-between items-center"
-		>
+		<div v-if="storeRune.skillsList.length > 0" class="flex justify-between items-center">
 			<div class="flex gap-x-2 items-center">
-				<n-badge
-					style="font-family: DingTalk"
-					:value="isAutoRune ? 'auto' : ''"
-					color="#ff6666"
-				>
+				<n-badge style="font-family: DingTalk" :value="isAutoRune ? 'auto' : ''" color="#ff6666">
 					<n-avatar
 						round
 						:bordered="false"
@@ -121,6 +131,7 @@ onDeactivated(() => {
 						@click="openDrawer"
 					/>
 				</n-badge>
+				<!-- 技能加点顺序。skill[0] 是图标，skill[1] 是 Q/W/E/R。 -->
 				<div class="relative" v-for="skill in storeRune.skillsList">
 					<n-avatar
 						round
@@ -130,9 +141,7 @@ onDeactivated(() => {
 						fallback-src="https://wegame.gtimg.com/g.26-r.c2d3c/helper/lol/assis/images/resources/usericon/4027.png"
 						style="display: block"
 					/>
-					<strong
-						class="skillText bg-neutral-900 bg-opacity-80 text-green-400"
-					>
+					<strong class="skillText bg-neutral-900 bg-opacity-80 text-green-400">
 						{{ skill[1] }}
 					</strong>
 				</div>
@@ -162,29 +171,15 @@ onDeactivated(() => {
 				</n-button>
 			</div>
 			<div v-else>
-				<n-button
-					:focusable="false"
-					class="p-2"
-					secondary
-					round
-					type="success"
-				>
+				<n-button :focusable="false" class="p-2" secondary round type="success">
 					强化符文
 				</n-button>
 			</div>
 		</div>
 
-		<div
-			v-else
-			class="flex w-full items-center justify-between"
-			style="height: 50px"
-		>
-			<n-button class="p-2" secondary type="success">
-				暂未选择英雄
-			</n-button>
-			<n-button class="p-2" secondary type="success">
-				空空空空如也
-			</n-button>
+		<div v-else class="flex w-full items-center justify-between" style="height: 50px">
+			<n-button class="p-2" secondary type="success"> 暂未选择英雄 </n-button>
+			<n-button class="p-2" secondary type="success"> 空空空空如也 </n-button>
 		</div>
 	</n-card>
 	<n-drawer
