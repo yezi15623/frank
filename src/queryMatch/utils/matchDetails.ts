@@ -302,7 +302,7 @@ export default class MatchDetails {
 		const dateStr = createTime[1];
 		const timeStr = createTime[0];
 		const lane = queryGameType(queueId);
-		const gameDuration = duration / 60.toFixed ? ((duration) / 60).toFixed(0) : ((duration) / 60).toFixed(0);
+		const gameDuration = (duration / 60).toFixed(0);
 		return [dateStr, timeStr, lane, gameDuration];
 	};
 
