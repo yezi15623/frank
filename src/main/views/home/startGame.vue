@@ -180,7 +180,7 @@ const tableData = [
 	}
 
 	75% {
-		transform: translateY(100%);
+		transform: translateY(-100%);
 	}
 }
 </style>
