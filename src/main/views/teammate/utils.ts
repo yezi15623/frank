@@ -13,8 +13,16 @@ import { querySummonerInfo } from "@/lcu/aboutSummoner";
 import { ChampionSession } from "@/background/types";
 // import {champSession} from "@/test";
 
-// 获取选择英雄时 获取所以友方召唤师ID /lol-champ-select/v1/session 的值
+/**
+ * 在选人阶段获取我方所有召唤师 ID。
+ *
+ * 数据来源：GET /lol-champ-select/v1/session
+ * 返回值中的 myTeam 包含本方玩家 cellId、summonerId 等信息。
+ *
+ * @param islistenSession 是否已经启动 champ-select 监听。未启动时顺手查询当前英雄 ID。
+ */
 export const queryAllSummonerId = async (islistenSession: boolean) => {
+	// 进入 ChampSelect 后 LCU session 可能还没完全稳定，稍等一小段时间再读取。
 	await new Promise((resolve) => setTimeout(resolve, 666));
 
 	const mactchSession = await invokeLcu<ChampionSession>(
@@ -35,6 +43,7 @@ export const queryAllSummonerId = async (islistenSession: boolean) => {
 
 	const myTeam: MyTeamObject[] = mactchSession.myTeam;
 	if (myTeam) {
+		// 去重并过滤 0，避免无效玩家 ID 进入后续查询。
 		const summonerIdList = [
 			...new Set(myTeam.map((summoner) => summoner.summonerId)),
 		].filter((id) => id !== 0);
@@ -47,46 +56,47 @@ export const queryAllSummonerId = async (islistenSession: boolean) => {
 	return null;
 };
 
-// 获取排位段位数据
+/**
+ * 查询某个召唤师的单双排/灵活段位。
+ */
 const querySummonerRank = async (puuid: string): Promise<[string, string]> => {
 	try {
-		// 调用接口获取数据
 		const response: any = await invokeLcu(
 			"get",
 			`/lol-ranked/v1/ranked-stats/${puuid}`,
 		);
 		const rankPoint = response?.queues ?? [];
 
-		// 如果没有数据，返回默认值
 		if (!Array.isArray(rankPoint) || rankPoint.length === 0) {
 			return ["未定级", "未定级"];
 		}
 
-		// 查找不同模式的排名数据
-		const rankSolo = rankPoint.find(
-			(i: any) => i.queueType === "RANKED_SOLO_5x5",
-		);
-		const rankFlex = rankPoint.find(
-			(i: any) => i.queueType === "RANKED_FLEX_SR",
-		);
+		const rankSolo = rankPoint.find((i: any) => i.queueType === "RANKED_SOLO_5x5");
+		const rankFlex = rankPoint.find((i: any) => i.queueType === "RANKED_FLEX_SR");
 
-		// 生成排名字符串的辅助函数
 		const generateRankString = (rank: any): string => {
 			if (!rank || rank.tier === "") return "未定级";
 			return `${englishToChinese(rank.tier)}${dealDivsion(rank.division)} ${rank.leaguePoints}`;
 		};
 
-		// 获取单人和灵活模式的排名信息
 		const RANKED_SOLO = generateRankString(rankSolo);
 		const RANKED_FLEX_SR = generateRankString(rankFlex);
 
 		return [RANKED_SOLO, RANKED_FLEX_SR];
-	} catch (error) {
+	} catch (_error) {
 		return ["error", "error"];
 	}
 };
 
-// 获取我方召唤师ID和昵称
+/**
+ * 获取队友列表基础信息。
+ *
+ * 流程：
+ * 1. 从 champ-select session 中拿到我方 summonerId；
+ * 2. 逐个查询召唤师资料；
+ * 3. 查询段位；
+ * 4. 组装 SummonerInfoList 给 teammateStore 使用。
+ */
 export const queryFriendInfo = async (
 	islistenSession: boolean,
 ): Promise<{ list: SummonerInfoList[]; champId: number }> => {
@@ -117,6 +127,11 @@ export const queryFriendInfo = async (
 	return { list: summonerInfoList, champId: summonerInfos.champId };
 };
 
+/**
+ * 查询召唤师信息，失败时最多重试 3 次。
+ *
+ * LCU 在选人阶段偶尔会短暂返回空数据，因此这里加轻量重试提高成功率。
+ */
 const fetchSummonerInfoWithRetry = async (
 	summonerId: number,
 	maxAttempts = 3,
@@ -129,6 +144,15 @@ const fetchSummonerInfoWithRetry = async (
 	return null;
 };
 
+/**
+ * 分析某个玩家近期战绩中最常使用的英雄和角色分布。
+ *
+ * 返回：
+ * - top3Champions：出现次数最多的 3 个英雄；
+ * - totalChampions：统计总局数；
+ * - roleCountMap：刺客/战士/法师等角色出现次数；
+ * - oneGameId：第一局 gameId，通常用于跳转或进一步查询。
+ */
 export const findTopChamp = (
 	match: SimpleMatchTypes[] | undefined | null,
 ): RencentDataAnalysisTypes | null => {
@@ -137,7 +161,6 @@ export const findTopChamp = (
 	}
 
 	const oneGameId = match[0].gameId;
-	// 使用 Map 统计每个 champId 出现的次数
 	const champIdCountMap = new Map<number, number>();
 	const roleCountMap: RoleCountMapTypes = {
 		assassin: 0,
@@ -148,7 +171,6 @@ export const findTopChamp = (
 		tank: 0,
 	};
 
-	// 初始化 champIdCountMap 并统计 roleCountMap
 	for (const champion of match) {
 		const { champId } = champion;
 		const role = champDict[champId].roles[0];
@@ -157,25 +179,19 @@ export const findTopChamp = (
 		champIdCountMap.set(champId, (champIdCountMap.get(champId) || 0) + 1);
 	}
 
-	// 计算总数
 	const totalChampions = match.length;
 
-	// 将 Map 转换为数组，并按出现次数和原数组顺序排序
-	const sortedChampIdCount = Array.from(champIdCountMap.entries()).sort(
-		(a, b) => {
-			// 如果出现次数相同，按照原数组顺序排序
-			if (a[1] === b[1]) {
-				const indexA = match.findIndex((c) => c.champId === a[0]);
-				const indexB = match.findIndex((c) => c.champId === b[0]);
-				return indexA - indexB;
-			}
+	// 按出现次数降序；次数相同则按原战绩顺序，保证结果稳定。
+	const sortedChampIdCount = Array.from(champIdCountMap.entries()).sort((a, b) => {
+		if (a[1] === b[1]) {
+			const indexA = match.findIndex((c) => c.champId === a[0]);
+			const indexB = match.findIndex((c) => c.champId === b[0]);
+			return indexA - indexB;
+		}
 
-			// 按出现次数降序排序
-			return b[1] - a[1];
-		},
-	);
+		return b[1] - a[1];
+	});
 
-	// 计算百分比并添加到结果中
 	const top3Champions = sortedChampIdCount.slice(0, 3).map((entry) => {
 		const [champId, count] = entry;
 		return {
