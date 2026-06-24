@@ -1,9 +1,16 @@
 <script setup>
-import { ref } from "vue";
 import { NButton } from "naive-ui";
 
+/**
+ * 底部浮动确认提示组件。
+ *
+ * 当前主要用于提示用户：LOL 游戏窗口为全屏模式时，Frank 游戏内窗口可能异常；
+ * 用户点击“确定”后由父组件执行切换无边框逻辑。
+ */
 const props = defineProps({
+	/** 是否显示提示框。 */
 	show: Boolean,
+	/** 提示标题。 */
 	title: {
 		type: String,
 		default: "",
@@ -22,7 +29,7 @@ const onConfirm = () => {
 </script>
 
 <template>
-	<!-- 使用 Vue 内置 Transition 实现丝滑动画 -->
+	<!-- 使用 Vue 内置 Transition 实现进入/离开动画。 -->
 	<Transition
 		enter-active-class="transition duration-300 ease-out"
 		enter-from-class="transform translate-y-10 opacity-0"
@@ -35,12 +42,12 @@ const onConfirm = () => {
 			v-if="show"
 			class="fixed bottom-0 left-0 right-0 z-50 flex justify-center pointer-events-none"
 		>
-			<!-- 提示框主体：磨砂玻璃效果 + 柔和阴影 -->
+			<!-- pointer-events-none 用在外层，pointer-events-auto 用在内容层，避免透明区域挡住其他交互。 -->
 			<div
 				class="pointer-events-auto w-full max-w-md bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-white/20 dark:border-gray-700/30 shadow-[0_8px_30px_rgb(0,0,0,0.12)] rounded-2xl p-3"
 			>
 				<div class="flex items-start gap-4">
-					<!-- 图标装饰 (可选) -->
+					<!-- 图标装饰。 -->
 					<div
 						class="flex-shrink-0 w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400"
 					>
@@ -80,7 +87,7 @@ const onConfirm = () => {
 					</div>
 				</div>
 
-				<!-- 按钮区域 -->
+				<!-- 按钮区域：只向父组件发事件，不直接修改配置。 -->
 				<div class="flex items-center justify-end gap-3">
 					<n-button @click="onCancel"> 取消 </n-button>
 					<n-button @click="onConfirm" type="info"> 确定 </n-button>
