@@ -1,11 +1,25 @@
+/**
+ * 对局详情相关类型定义。
+ *
+ * 这些 interface 主要服务于：
+ * - src/queryMatch/utils/matchDetails.ts 的 LCU 对局详情转换；
+ * - matchContent、GameEnd、recentMatch 详情抽屉等展示组件。
+ *
+ * 大多数字段直接对应 LCU /lol-match-history/v1/games/{gameId} 返回结构，
+ * 少数字段是 Frank 转换后的页面展示结构。
+ */
 export interface MatchItem {
+  /** 是否展示在左侧队伍。 */
   isLeft: boolean
+  /** 当前队伍或当前列表下的召唤师详情。 */
   detailInfo: SummonerDetailInfo[],
+  /** 当前展示的柱状/百分比字段。 */
   showTypeKey: 'totalDamageDealtToChampions' | 'totalDamageTaken' | 'goldEarned' | 'visionScore' | 'totalMinionsKilled',
   showTypeIndex: number,
   querySumDetail: Function
 }
 
+/** 页面统计最大值列表。 */
 export interface MaxValueList {
   tddtc: number,
   tdt: number,
@@ -14,6 +28,7 @@ export interface MaxValueList {
   tmk: number
 }
 
+/** 召唤师详情弹窗的基础信息。 */
 export interface SumDetail {
   name: string;
   champImgUrl: string;
@@ -27,6 +42,7 @@ export interface SumDetail {
   summonerId: number;
 }
 
+/** LCU participantIdentities 中的 player 字段。 */
 interface Player {
   accountId: number;
   currentAccountId: number;
@@ -45,12 +61,14 @@ export interface ParticipantIdentity {
   player: Player;
 }
 
+/** matchDetails.ts 内部使用的召唤师名称/平台信息简化结构。 */
 export interface SumPlatInfo {
   puuid: string;
   name: string;
   summonerId: number;
 }
 
+/** LCU 对局详情中单个参与者的 stats 字段。 */
 export interface Stat {
   assists: number;
   causedEarlySurrender: boolean;
@@ -202,6 +220,7 @@ interface Timeline {
   xpPerMinDeltas: XpPerMinDelta;
 }
 
+/** LCU 对局详情中的单个参与者。 */
 export interface Participant {
   championId: number;
   highestAchievedSeasonTier: string;
@@ -236,6 +255,7 @@ interface Team {
   win: string;
 }
 
+/** LCU 对局详情完整响应。 */
 export interface GameDetailedInfo {
   gameCreation: number;
   gameCreationDate: string;
@@ -253,6 +273,7 @@ export interface GameDetailedInfo {
   teams: Team[];
 }
 
+/** 页面最终展示的单个召唤师详情。 */
 export interface SummonerDetailInfo {
   name: string;
   accountId: number;
@@ -287,6 +308,7 @@ export interface SummonerDetailInfo {
   showDataDict: ShowDataTypes
 }
 
+/** 页面展示所需的整局对局详情结构。 */
 export interface ParticipantsInfo {
   teamOne: SummonerDetailInfo[],
   teamTwo: SummonerDetailInfo[],
@@ -304,6 +326,7 @@ export interface MatchHistoryTypes {
   matchMode: string
 }
 
+/** matchDetails.ts 用来计算全场最高值的数据结构。 */
 export interface MaxMatchData {
   kills: number;
   assists: number;
@@ -325,6 +348,7 @@ export interface PropertiesToCompareTypes {
   visionScore: number;
 }
 
+/** 页面中用于计算横向百分比条的数据。 */
 export interface ShowDataTypes {
   totalDamageDealtToChampions: number,
   totalDamageTaken: number,
