@@ -1,58 +1,91 @@
 <script setup lang="ts">
-import {NSpace, NTag, NCard, useMessage, NButton} from 'naive-ui'
-import {useTeammateStore} from "@/main/store/useTeammate";
+import { NSpace, NTag, NCard, NButton } from "naive-ui";
+import { useTeammateStore } from "@/main/store/useTeammate";
 import SummonerList from "./summonerList.vue";
-import {MatchAnalysisWindow} from "@/background/utils/creatWindow.ts";
+import { MatchAnalysisWindow } from "@/background/utils/creatWindow.ts";
 
-const teammateStore = useTeammateStore()
-const message = useMessage()
+/**
+ * 队友页入口。
+ *
+ * 进入 ChampSelect 后，main/index.vue 会初始化 teammateStore，
+ * 本页面负责展示队友列表、近期战绩状态，并提供“对局分析”窗口入口。
+ */
+const teammateStore = useTeammateStore();
 
+/** 打开对局分析窗口。 */
 const openWin = () => {
-  new MatchAnalysisWindow
-}
-const reGet = () => {
-  teammateStore.reInit()
-}
+	new MatchAnalysisWindow();
+};
 
+/** 战绩查询失败时，允许用户重新拉取一次队友数据。 */
+const reGet = () => {
+	teammateStore.reInit();
+};
 </script>
 
 <template>
-  <n-card
-    size="small" class="shadow"
-    style="height: 616px"
-    content-style="padding-top: 2px;">
+	<n-card
+		size="small"
+		class="shadow"
+		style="height: 616px"
+		content-style="padding-top: 2px;"
+	>
+		<summoner-list />
 
-    <summoner-list/>
+		<div class="matchAnalysisDash dark:border-gray-700">
+			<n-space justify="space-between" style="width: 100%">
+				<n-button
+					@click="reGet"
+					size="small"
+					class="px-2"
+					type="success"
+					v-if="teammateStore.isCacheSuccess === -1"
+					:bordered="false"
+					round
+				>
+					重新获取
+				</n-button>
+				<n-button
+					@click="openWin"
+					size="small"
+					class="px-2"
+					type="success"
+					v-else
+					:disabled="teammateStore.isCacheSuccess !== 1"
+					:bordered="false"
+					round
+				>
+					对局分析
+				</n-button>
 
-    <div class="matchAnalysisDash dark:border-gray-700">
-      <n-space justify="space-between" style="width: 100%;">
-        <n-button @click="reGet" size="small"
-                  class="px-2" type="success"
-                  v-if="teammateStore.isCacheSuccess === -1"
-                  :bordered="false" round>
-          重新获取
-        </n-button>
-        <n-button @click="openWin" size="small"
-                  class="px-2" type="success"
-                  v-else
-                  :disabled="teammateStore.isCacheSuccess !== 1"
-                  :bordered="false" round>
-          对局分析
-        </n-button>
-
-        <n-tag type="info" round v-if="teammateStore.isCacheSuccess === 0"
-               :disabled="true" :bordered="false">
-          正在获取队友段位数据
-        </n-tag>
-        <n-tag type="success" round v-else-if="teammateStore.isCacheSuccess === 1"
-               :disabled="true" :bordered="false">
-          点击左侧按钮查看更多
-        </n-tag>
-        <n-tag type="error" round v-else-if="teammateStore.isCacheSuccess===-1"
-               :disabled="true" :bordered="false">
-          啊哦~ 队友数据获取异常
-        </n-tag>
-      </n-space>
-    </div>
-  </n-card>
+				<n-tag
+					type="info"
+					round
+					v-if="teammateStore.isCacheSuccess === 0"
+					:disabled="true"
+					:bordered="false"
+				>
+					正在获取队友段位数据
+				</n-tag>
+				<n-tag
+					type="success"
+					round
+					v-else-if="teammateStore.isCacheSuccess === 1"
+					:disabled="true"
+					:bordered="false"
+				>
+					点击左侧按钮查看更多
+				</n-tag>
+				<n-tag
+					type="error"
+					round
+					v-else-if="teammateStore.isCacheSuccess === -1"
+					:disabled="true"
+					:bordered="false"
+				>
+					啊哦~ 队友数据获取异常
+				</n-tag>
+			</n-space>
+		</div>
+	</n-card>
 </template>
