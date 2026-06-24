@@ -4,7 +4,14 @@ import { champDict } from "@/resources/champList";
 import { querySummonerPosition } from "@/lcu/utils";
 import { GamesBySgp } from "@/lcu/types/queryMatchSgpGameTypes";
 
+/**
+ * 队友近期战绩查询与转换类。
+ *
+ * 这个类把 LCU/SGP 返回的复杂战绩对象压缩成 SimpleMatchTypes，
+ * 供队友页、对局分析窗口、游戏内战绩窗口展示。
+ */
 export class QueryMatch {
+	/** 时间戳转换为 MM-DD。 */
 	public timestampToDate = (timestamp: number) => {
 		const date = new Date(timestamp);
 		return (
@@ -16,6 +23,7 @@ export class QueryMatch {
 		);
 	};
 
+	/** queueId 转中文模式名。 */
 	public queryGameType = (queueId: number) => {
 		switch (queueId) {
 			case 420:
@@ -36,14 +44,18 @@ export class QueryMatch {
 		return "其它";
 	};
 
+	/**
+	 * 将一局原始战绩转换成页面用的简化结构。
+	 *
+	 * match 可能来自两种数据格式：
+	 * - LCU：战斗统计在 participants[0].stats 中；
+	 * - SGP：战斗统计直接在 participants[0] 中。
+	 * 所以这里用 "stats" in p0 做兼容。
+	 */
 	public getSimpleMatch = (match: Games | GamesBySgp): SimpleMatchTypes => {
-		// 1. 获取第一个参与者对象
 		const p0 = match.participants[0];
-
-		// 2. 统一战斗数据源 (LCU 嵌套在 stats 中，SGP 直接在 p0 中)
 		const statsSource = "stats" in p0 ? p0.stats : p0;
 
-		// 3. 提取战斗数据和物品 (来自 statsSource)
 		const {
 			kills,
 			deaths,
@@ -59,19 +71,13 @@ export class QueryMatch {
 			item6,
 		} = statsSource;
 
-		// 4. 提取参与者根属性 (championId, spellId 无论哪种格式都在这里)
 		const { championId, spell1Id, spell2Id } = p0;
 
-		// 5. 计算 KDA
+		// deaths=0 时避免除零，直接使用 kills+assists 作为 KDA。
 		const kda =
-			deaths === 0
-				? kills + assists
-				: Math.round(((kills + assists) / deaths) * 3);
+			deaths === 0 ? kills + assists : Math.round(((kills + assists) / deaths) * 3);
 
-		// 6. 处理位置 (Lane) 差异
 		const rawLane = "timeline" in p0 ? p0.timeline.lane : (p0 as any).lane;
-
-		// 7. 查找英雄别名 (增加防御性判断)
 		const champAlias = champDict[String(championId)]?.alias || "unknown";
 
 		return {
@@ -93,7 +99,10 @@ export class QueryMatch {
 			level: champLevel,
 		};
 	};
-	// process record data
+
+	/**
+	 * 查询指定范围内的战绩并转换为 SimpleMatchTypes。
+	 */
 	public dealMatchHistory = async (
 		puuid: string,
 		begIndex: number,
@@ -108,7 +117,12 @@ export class QueryMatch {
 			return this.getSimpleMatch(matchListElement);
 		});
 	};
-	// query the record of a specific mode
+
+	/**
+	 * 从近期战绩中筛选指定 queueId 的战绩。
+	 *
+	 * 如果前 20 局不足 10 条指定模式战绩，会继续查询 20-40 局补齐。
+	 */
 	public querySpecialMatch = async (
 		puuid: string,
 		matchHis20: SimpleMatchTypes[],
@@ -135,12 +149,15 @@ export class QueryMatch {
 		}
 	};
 
+	/** 获取近期战绩；重新获取时只查 10 局，首次缓存时查 20 局。 */
 	public getMatchHis = async (puuid: string, isReGet: boolean) => {
 		if (isReGet) {
 			return await this.dealMatchHistory(puuid, 0, 10);
 		}
 		return await this.dealMatchHistory(puuid, 0, 20);
 	};
+
+	/** 获取指定模式战绩。 */
 	public getSpecialMatchHis = async (
 		puuid: string,
 		matchHis20: SimpleMatchTypes[],
